@@ -1,6 +1,8 @@
 # VoronoiC
 Simple Voronoi graph renderer using [SDL2](https://www.libsdl.org/)
 
+![](https://user-images.githubusercontent.com/31960595/189929905-039a72a8-69d5-4d3e-8595-907af8516c33.png)
+
 # How to use
 Run the .exe and place Voronoi points on screen to see a Voronoi graph apear
 
