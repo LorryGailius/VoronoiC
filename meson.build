@@ -1,4 +1,5 @@
-project('Voronoi_project', 'c')
+project('sdldemo', 'c',
+        default_options: 'default_library=static')
 
 sdl2_dep = dependency('sdl2')
 
