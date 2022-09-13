@@ -1,5 +1,5 @@
 # VoronoiC
-Simple Voronoi graph renderer using [SDL2](https://www.libsdl.org/)
+Simple Voronoi graph renderer made with [SDL2](https://www.libsdl.org/) and C
 
 ![](https://user-images.githubusercontent.com/31960595/189929905-039a72a8-69d5-4d3e-8595-907af8516c33.png)
 
