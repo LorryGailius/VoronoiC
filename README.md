@@ -1,5 +1,5 @@
 # VoronoiC
-Simple Voronoi graph renderer using SDL
+Simple Voronoi graph renderer using [SDL2](https://www.libsdl.org/)
 
 # How to use
 Run the .exe and place Voronoi points on screen to see a Voronoi graph apear
