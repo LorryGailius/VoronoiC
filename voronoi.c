@@ -1,4 +1,4 @@
-#include <voronoi.h>
+#include "voronoi.h"
 
 int calc_dist(const int ax, const int ay, const int bx, const int by) {
 

@@ -1,5 +1,5 @@
-#include "SDL.h"
-#include <voronoi.h>
+#include <SDL2/SDL.h>
+#include "voronoi.h"
 #include <assert.h>
 #include <time.h>
 
