@@ -1,76 +1,170 @@
+// Laurynas Gailius 2023
+/*
+References: 
+    - Rendering pixel array by keeping it in RAM and then just copying it to a texture : 
+            https://discourse.libsdl.org/t/most-efficient-way-of-getting-render-pixels/27581/4 
+*/
+
 #include <SDL2/SDL.h>
-#include "voronoi.h"
-#include <assert.h>
-#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
 
-const int screen_width = 800;
-const int screen_height = 600;
+#define WIDTH 800
+#define HEIGHT 600
+#define MAX_POINTS 10
+#define POINT_RADIUS 4
 
-int main(int argc, char *argv[]) {
-    srand(time(NULL));
+typedef struct
+{
+    int x;
+    int y;
+} point_t;
 
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    SDL_Surface *surface;
-    SDL_Event event;
+uint32_t pixels[HEIGHT][WIDTH] = {0};
+point_t points[MAX_POINTS];
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
-        return 3;
-    }
+void draw_circle(int cx, int cy, int radius, uint32_t color)
+{
+    int x0 = cx - radius;
+    int y0 = cy - radius;
+    int x1 = cx + radius;
+    int y1 = cy + radius;
 
-    if (SDL_CreateWindowAndRenderer(screen_width, screen_height, SDL_WINDOW_SHOWN, &window, &renderer)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window and renderer: %s", SDL_GetError());
-        return 3;
-    }
+    for (int x = x0; x < x1; x++)
+    {
+        if (x >= 0 && x < WIDTH)
+        {
+            for (int y = y0; y < y1; y++)
+            {
+                if (y >= 0 && y < HEIGHT)
+                {
+                    int dx = x - cx;
+                    int dy = y - cy;
 
-    int mouse_x, mouse_y, pointNum = 0;
-
-    pixel_t **pixels = (pixel_t**)malloc(screen_height * sizeof(pixel_t*));
-
-    for (size_t i = 0; i < screen_height; i++) {
-
-        pixels[i] = (pixel_t*)malloc(screen_width * sizeof(pixel_t));
-    }
-
-    point_t *points = malloc(MAX_POINTS * sizeof(point_t));
-
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-    SDL_RenderPresent(renderer);
-
-    while (1) {
-
-        SDL_PollEvent(&event);
-
-        if (event.type == SDL_QUIT) {
-            break;
-        }
-        else if(event.type == SDL_MOUSEBUTTONDOWN) {
-            if(event.button.button == SDL_BUTTON_LEFT) { 
-
-                SDL_GetMouseState(&mouse_x, &mouse_y);
-                add_point(points, &pointNum, mouse_x, mouse_y); 
-                voronoi(points, pointNum, screen_width, screen_height, pixels);
-                
-                for (size_t i = 0; i < screen_height; i++) {
-                    for (size_t j = 0; j < screen_width; j++) {
-                        SDL_SetRenderDrawColor(renderer, pixels[i][j].r, pixels[i][j].g, pixels[i][j].b, 255);
-                        SDL_RenderDrawPoint(renderer, j, i);
+                    if ((dx * dx + dy * dy) <= (radius * radius))
+                    {
+                        pixels[y][x] = color;
                     }
                 }
-                SDL_RenderPresent(renderer);
             }
         }
     }
+}
 
+void generate_random_points()
+{
+    for (int i = 0; i < MAX_POINTS; i++)
+    {
+        points[i].x = rand() % WIDTH;
+        points[i].y = rand() % HEIGHT;
+    }
+}
+
+void texturize_pixels(SDL_Texture *texture, int texture_pitch)
+{
+    void *texture_pixels = NULL;
+
+    if (SDL_LockTexture(texture, NULL, &texture_pixels, &texture_pitch) != 0)
+    {
+        SDL_Log("Unable to lock texture: %s", SDL_GetError());
+    }
+    else
+    {
+        memcpy(texture_pixels, pixels, texture_pitch * HEIGHT);
+    }
+
+    SDL_UnlockTexture(texture);
+}
+
+int main(int argc, char *argv[])
+{
+    // initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    {
+        SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
+        return 1;
+    }
+
+    // create window
+    SDL_Window *window = SDL_CreateWindow("sdl2_pixelbuffer",
+                                          SDL_WINDOWPOS_CENTERED,
+                                          SDL_WINDOWPOS_CENTERED,
+                                          WIDTH, HEIGHT,
+                                          SDL_WINDOW_SHOWN);
+    if (window == NULL)
+    {
+        SDL_Log("Unable to create window: %s", SDL_GetError());
+        return 1;
+    }
+
+    // create renderer
+    SDL_Renderer *renderer = SDL_CreateRenderer(
+        window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (renderer == NULL)
+    {
+        SDL_Log("Unable to create renderer: %s", SDL_GetError());
+        return 1;
+    }
+
+    SDL_RenderSetLogicalSize(renderer, WIDTH, HEIGHT);
+
+    // create texture
+    SDL_Texture *texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING,
+        WIDTH,
+        HEIGHT);
+    if (texture == NULL)
+    {
+        SDL_Log("Unable to create texture: %s", SDL_GetError());
+        return 1;
+    }
+
+    generate_random_points();
+    for (int i = 0; i < MAX_POINTS; i++)
+    {
+        draw_circle(points[i].x, points[i].y, POINT_RADIUS, 0xFFFFFFFF);
+    }
+
+    texturize_pixels(texture, 0);
+
+    bool should_quit = false;
+    SDL_Event e;
+    while (!should_quit)
+    {
+        while (SDL_PollEvent(&e) != 0)
+        {
+            if (e.type == SDL_QUIT)
+            {
+                should_quit = true;
+            }
+            else if (e.type == SDL_MOUSEBUTTONDOWN)
+            {
+                if (e.button.button == SDL_BUTTON_LEFT)
+                {
+                    int x = e.button.x;
+                    int y = e.button.y;
+                    draw_circle(x, y, POINT_RADIUS, 0xFFFFFFFF);
+                }
+
+                texturize_pixels(texture, 0);
+            }
+        }
+
+        // render on screen
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
+    }
+
+    SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
-    for(size_t i = 0; i < screen_height; i++) { free(pixels[i]); }
-    
-    free(pixels);
-    free(points);
 
     return 0;
 }
