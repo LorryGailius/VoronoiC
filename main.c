@@ -30,7 +30,6 @@ uint32_t color_palette[] = {
     0xFF48C9ED,
     0xFFA17AB0,
     0xFF7CBE01};
-
 int palette_size = sizeof(color_palette) / sizeof(uint32_t);
 
 void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitch)
