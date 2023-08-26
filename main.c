@@ -23,7 +23,7 @@ Color is represented in RGBA format, where each channel is 8 bits long.
 
 #define WIDTH 800
 #define HEIGHT 600
-#define MAX_POINTS 1000
+#define MAX_POINTS 100
 #define POINT_RADIUS 4
 #define POINT_COLOR 0xFF000000
 
@@ -31,6 +31,8 @@ typedef struct
 {
     int x;
     int y;
+    int velocity_x;
+    int velocity_y;
     uint32_t color;
 } point_t;
 
@@ -49,6 +51,17 @@ uint32_t color_palette[] = {
     0xFF7CBE01};
 
 int palette_size = sizeof(color_palette) / sizeof(uint32_t);
+
+void fill_screen(uint32_t color)
+{
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
+            pixels[y][x] = color;
+        }
+    }
+}
 
 void draw_circle(int cx, int cy, int radius, uint32_t color)
 {
@@ -78,14 +91,23 @@ void draw_circle(int cx, int cy, int radius, uint32_t color)
     }
 }
 
+void add_point(int x, int y)
+{
+    point_t p = {
+        .x = x,
+        .y = y,
+        .color = color_palette[point_count % palette_size],
+        .velocity_x = rand() % 5 - 2,
+        .velocity_y = rand() % 5 - 2};
+
+    points[point_count++] = p;
+}
+
 void generate_random_points(int count)
 {
     for (int i = 0; i < count; i++)
     {
-        points[i].x = rand() % WIDTH;
-        points[i].y = rand() % HEIGHT;
-        points[i].color = color_palette[i % palette_size];
-        point_count++;
+        add_point(rand() % WIDTH, rand() % HEIGHT);
     }
 }
 
@@ -94,6 +116,25 @@ void draw_all_points()
     for (int i = 0; i < point_count; i++)
     {
         draw_circle(points[i].x, points[i].y, POINT_RADIUS, POINT_COLOR);
+    }
+}
+
+void move_points()
+{
+    for (int i = 0; i < point_count; i++)
+    {
+        points[i].x += points[i].velocity_x;
+        points[i].y += points[i].velocity_y;
+
+        if (points[i].x < 0 || points[i].x >= WIDTH)
+        {
+            points[i].velocity_x *= -1;
+        }
+
+        if (points[i].y < 0 || points[i].y >= HEIGHT)
+        {
+            points[i].velocity_y *= -1;
+        }
     }
 }
 
@@ -138,6 +179,13 @@ void brute_force_voronoi()
             pixels[y][x] = points[prev].color;
         }
     }
+}
+
+void draw_voronoi(SDL_Texture *texture)
+{
+    brute_force_voronoi();
+    draw_all_points();
+    texturize_pixels(texture, 0);
 }
 
 int main(int argc, char *argv[])
@@ -187,7 +235,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    bool should_quit = false;
+    generate_random_points(5);
+    draw_voronoi(texture);
+
+    bool should_quit = false, animate = false;
     SDL_Event e;
     while (!should_quit)
     {
@@ -201,16 +252,20 @@ int main(int argc, char *argv[])
             {
                 if (e.button.button == SDL_BUTTON_LEFT && point_count < MAX_POINTS)
                 {
-                    point_t p = {e.button.x, e.button.y, color_palette[point_count % palette_size]};
-                    points[point_count++] = p;
+                    add_point(e.button.x, e.button.y);
                 }
-
-                brute_force_voronoi();
-
-                draw_all_points();
-
-                texturize_pixels(texture, 0);
+                draw_voronoi(texture);
             }
+            else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_m)
+            {
+                animate = !animate;
+            }
+        }
+
+        if (animate)
+        {
+            move_points();
+            draw_voronoi(texture);
         }
 
         // render on screen
