@@ -1,8 +1,15 @@
 // Laurynas Gailius 2023
 /*
-References: 
-    - Rendering pixel array by keeping it in RAM and then just copying it to a texture : 
-            https://discourse.libsdl.org/t/most-efficient-way-of-getting-render-pixels/27581/4 
+References:
+    - Rendering pixel array by keeping it in RAM and then just copying it to a texture :
+            https://discourse.libsdl.org/t/most-efficient-way-of-getting-render-pixels/27581/4
+
+Color is represented in RGBA format, where each channel is 8 bits long.
+    - 0xAABBGGRR
+    - AA - alpha channel
+    - BB - blue channel
+    - GG - green channel
+    - RR - red channel
 */
 
 #include <SDL2/SDL.h>
@@ -11,20 +18,37 @@ References:
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
+#include <limits.h>
 
 #define WIDTH 800
 #define HEIGHT 600
-#define MAX_POINTS 10
+#define MAX_POINTS 1000
 #define POINT_RADIUS 4
+#define POINT_COLOR 0xFF000000
 
 typedef struct
 {
     int x;
     int y;
+    uint32_t color;
 } point_t;
 
 uint32_t pixels[HEIGHT][WIDTH] = {0};
 point_t points[MAX_POINTS];
+int point_count = 0;
+
+uint32_t color_palette[] = {
+    0xFFA7794E,
+    0xFF2B8EF2,
+    0xFF5957E1,
+    0xFFB2B776,
+    0xFF4FA159,
+    0xFF48C9ED,
+    0xFFA17AB0,
+    0xFF7CBE01};
+
+int palette_size = sizeof(color_palette) / sizeof(uint32_t);
 
 void draw_circle(int cx, int cy, int radius, uint32_t color)
 {
@@ -54,12 +78,22 @@ void draw_circle(int cx, int cy, int radius, uint32_t color)
     }
 }
 
-void generate_random_points()
+void generate_random_points(int count)
 {
-    for (int i = 0; i < MAX_POINTS; i++)
+    for (int i = 0; i < count; i++)
     {
         points[i].x = rand() % WIDTH;
         points[i].y = rand() % HEIGHT;
+        points[i].color = color_palette[i % palette_size];
+        point_count++;
+    }
+}
+
+void draw_all_points()
+{
+    for (int i = 0; i < point_count; i++)
+    {
+        draw_circle(points[i].x, points[i].y, POINT_RADIUS, POINT_COLOR);
     }
 }
 
@@ -79,8 +113,37 @@ void texturize_pixels(SDL_Texture *texture, int texture_pitch)
     SDL_UnlockTexture(texture);
 }
 
+int sqr_dist(int x1, int y1, int x2, int y2)
+{
+    int dx = x1 - x2;
+    int dy = y1 - y2;
+
+    return dx * dx + dy * dy;
+}
+
+void brute_force_voronoi()
+{
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
+            int prev = 0;
+            for (int i = 0; i < point_count; i++)
+            {
+                if (sqr_dist(x, y, points[i].x, points[i].y) < sqr_dist(x, y, points[prev].x, points[prev].y))
+                {
+                    prev = i;
+                }
+            }
+            pixels[y][x] = points[prev].color;
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
+    srand(time(NULL));
+
     // initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
@@ -124,14 +187,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    generate_random_points();
-    for (int i = 0; i < MAX_POINTS; i++)
-    {
-        draw_circle(points[i].x, points[i].y, POINT_RADIUS, 0xFFFFFFFF);
-    }
-
-    texturize_pixels(texture, 0);
-
     bool should_quit = false;
     SDL_Event e;
     while (!should_quit)
@@ -144,12 +199,15 @@ int main(int argc, char *argv[])
             }
             else if (e.type == SDL_MOUSEBUTTONDOWN)
             {
-                if (e.button.button == SDL_BUTTON_LEFT)
+                if (e.button.button == SDL_BUTTON_LEFT && point_count < MAX_POINTS)
                 {
-                    int x = e.button.x;
-                    int y = e.button.y;
-                    draw_circle(x, y, POINT_RADIUS, 0xFFFFFFFF);
+                    point_t p = {e.button.x, e.button.y, color_palette[point_count % palette_size]};
+                    points[point_count++] = p;
                 }
+
+                brute_force_voronoi();
+
+                draw_all_points();
 
                 texturize_pixels(texture, 0);
             }
