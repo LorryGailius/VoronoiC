@@ -36,7 +36,7 @@ uint32_t color_palette[] = {
     0xFF7CBE01};
 int palette_size = sizeof(color_palette) / sizeof(uint32_t);
 
-// dump pixel data to an SDL_Texture
+// Dump pixel data to an SDL_Texture
 void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitch)
 {
     void *texture_pixels = NULL;
@@ -53,7 +53,7 @@ void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitc
     SDL_UnlockTexture(texture);
 }
 
-// draw voronoi diagram on screen
+// Draw voronoi diagram on screen
 void display(SDL_Texture *texture, voronoi_t *v, bool draw_points)
 {
     voronoi_draw(v, draw_points);
@@ -65,14 +65,14 @@ int main(int argc, char *argv[])
     srand(time(NULL));
     voronoi_t properties = voronoi_create(WIDTH, HEIGHT, MAX_POINTS, POINT_RADIUS, POINT_COLOR, color_palette, palette_size);
 
-    // initialize SDL
+    // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
         SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
         return 1;
     }
 
-    // create window
+    // Create window
     SDL_Window *window = SDL_CreateWindow("VoronoiC",
                                           SDL_WINDOWPOS_CENTERED,
                                           SDL_WINDOWPOS_CENTERED,
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // create renderer
+    // Create renderer
     SDL_Renderer *renderer = SDL_CreateRenderer(
         window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (renderer == NULL)
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 
     SDL_RenderSetLogicalSize(renderer, WIDTH, HEIGHT);
 
-    // create texture
+    // Create texture
     SDL_Texture *texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_RGBA32,
@@ -132,12 +132,14 @@ int main(int argc, char *argv[])
                 {
                     case SDLK_p:
                     {
+                        // Toggle point visibility
                         points = !points;
                         display(texture, &properties, points);
                         break;
                     }
                     case SDLK_g:
                     {
+                        // Generate random points
                         voronoi_generate_random_points(&properties, 10);
                         display(texture, &properties, points);
                         break;
@@ -149,7 +151,7 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        // render on screen
+        // Render on screen
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);

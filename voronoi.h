@@ -58,6 +58,7 @@ void voronoi_brute_force(voronoi_t *v);
 
 void voronoi_move_points(voronoi_t *v);
 
-void voronoi_draw(voronoi_t *v, bool draw_points);
+void voronoi_kdtree(voronoi_t *v);
 
+void voronoi_draw(voronoi_t *v, bool draw_points);
 #endif

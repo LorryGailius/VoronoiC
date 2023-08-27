@@ -1,5 +1,6 @@
 #include "voronoi.h"
 
+// Creates a new node for the KDTree
 node_t *node_create(voronoi_t *v, int arr[], uint32_t color)
 {
     node_t *temp = (node_t *)malloc(sizeof(node_t));
@@ -21,15 +22,18 @@ node_t *node_create(voronoi_t *v, int arr[], uint32_t color)
     return temp;
 }
 
+// Free memory used by the KDTree
 void deleteTree(node_t *root)
 {
-    if (root == NULL)
+    if (root == NULL) {
         return;
+    }
     deleteTree(root->left);
     deleteTree(root->right);
     free(root);
 }
 
+// Recursive function to insert a node into the KDTree
 node_t *insert_rec(voronoi_t *v, node_t *root, int point[], unsigned depth, uint32_t color)
 {
     if (root == NULL)
@@ -51,11 +55,13 @@ node_t *insert_rec(voronoi_t *v, node_t *root, int point[], unsigned depth, uint
     return root;
 }
 
+// Wrapper function for insert_rec
 node_t *insert(voronoi_t *v, node_t *root, int point[], uint32_t color)
 {
     return insert_rec(v, root, point, 0, color);
 }
 
+// Checks if two points are the same, used for deleting nodes
 bool arePointsSame(int point1[], int point2[])
 {
     for (int i = 0; i < k; i++)
@@ -68,6 +74,7 @@ bool arePointsSame(int point1[], int point2[])
     return true;
 }
 
+// Compares two points in a specified dimension, used for deleting nodes
 int comparePoints(int point1[], int point2[], unsigned cd)
 {
     if (point1[cd] < point2[cd])
@@ -77,6 +84,7 @@ int comparePoints(int point1[], int point2[], unsigned cd)
     return 0;
 }
 
+// Finds the minimum node in a subtree, used for deleting nodes
 node_t *findMin(node_t *root, unsigned cd, unsigned depth)
 {
     if (root == NULL)
@@ -103,6 +111,7 @@ node_t *findMin(node_t *root, unsigned cd, unsigned depth)
     return min_node;
 }
 
+// Deletes a specified node from the KDTree
 node_t *delete_node(node_t *root, int point[], unsigned depth)
 {
     if (root == NULL)
@@ -144,6 +153,7 @@ node_t *delete_node(node_t *root, int point[], unsigned depth)
     return root;
 }
 
+// Finds the nearest neighbour of a point in the KDTree
 node_t *nearest_neighbour_rec(node_t *root, int point[], unsigned depth, int *min_dist, node_t **min_node)
 {
     if (root == NULL)
@@ -156,6 +166,7 @@ node_t *nearest_neighbour_rec(node_t *root, int point[], unsigned depth, int *mi
     node_t *nearest = NULL;
     node_t *other = NULL;
 
+    // Choose between left and right subtree
     if (point[cd] < root->point[cd])
     {
         nearest = nearest_neighbour_rec(root->left, point, depth + 1, min_dist, min_node);
@@ -166,6 +177,7 @@ node_t *nearest_neighbour_rec(node_t *root, int point[], unsigned depth, int *mi
         nearest = nearest_neighbour_rec(root->right, point, depth + 1, min_dist, min_node);
         other = root->left;
     }
+
 
     int dist_sq = 0;
     for (int i = 0; i < k; i++)
@@ -180,6 +192,7 @@ node_t *nearest_neighbour_rec(node_t *root, int point[], unsigned depth, int *mi
         *min_node = root;
     }
 
+    // Check if splitting plane is crossed
     int split_diff = point[cd] - root->point[cd];
 
     if (split_diff * split_diff < *min_dist)
@@ -204,6 +217,7 @@ node_t *nearest_neighbour_rec(node_t *root, int point[], unsigned depth, int *mi
     return *min_node;
 }
 
+// Wrapper function for nearest_neighbour_rec
 node_t *nearest_neighbour(node_t *root, int point[])
 {
     int min_dist = INT_MAX;
@@ -211,6 +225,7 @@ node_t *nearest_neighbour(node_t *root, int point[])
     return nearest_neighbour_rec(root, point, 0, &min_dist, &min_node);
 }
 
+// Initialize voronoi properties struct
 voronoi_t voronoi_create(int width, int height, int max_points, int point_radius, uint32_t point_color, uint32_t *color_palette, int palette_size)
 {
     voronoi_t v;
@@ -244,6 +259,7 @@ voronoi_t voronoi_create(int width, int height, int max_points, int point_radius
     return v;
 }
 
+// Free memory allocated by voronoi_create
 void voronoi_destroy(voronoi_t *v)
 {
     deleteTree(v->root);
@@ -251,6 +267,7 @@ void voronoi_destroy(voronoi_t *v)
     free(v->points);
 }
 
+// Fill screen with one color
 void fill_screen(voronoi_t *v, uint32_t color)
 {
     for (int y = 0; y < v->height; y++)
@@ -262,6 +279,7 @@ void fill_screen(voronoi_t *v, uint32_t color)
     }
 }
 
+// Draw a circle on the screen
 void draw_circle(voronoi_t *v, int cx, int cy, int radius, uint32_t color)
 {
     int x0 = cx - radius;
@@ -290,6 +308,7 @@ void draw_circle(voronoi_t *v, int cx, int cy, int radius, uint32_t color)
     }
 }
 
+// Adds a point to the voronoi diagram, both to the points array and the KDTree
 void voronoi_add_point(voronoi_t *v, int x, int y)
 {
     if (v->point_count > v->max_points)
@@ -330,6 +349,8 @@ void voronoi_draw_all_points(voronoi_t *v)
     }
 }
 
+// Used to move points around the screen space
+// Removed implementation of this function from main.c becuase of poor performance
 void voronoi_move_points(voronoi_t *v)
 {
     for (int i = 0; i < v->point_count; i++)
@@ -368,6 +389,7 @@ int sqr_dist(int x1, int y1, int x2, int y2)
     return dx * dx + dy * dy;
 }
 
+// Brute force approach to generate a voronoi diagram
 void voronoi_brute_force(voronoi_t *v)
 {
     for (int y = 0; y < v->height; y++)
@@ -387,7 +409,8 @@ void voronoi_brute_force(voronoi_t *v)
     }
 }
 
-void voronoit_kdtree(voronoi_t *v)
+// A more efficient approach to generate a voronoi diagram by using a KDTree data structure
+void voronoi_kdtree(voronoi_t *v)
 {
     for (int y = 0; y < v->height; y++)
     {
@@ -407,7 +430,7 @@ void voronoi_draw(voronoi_t *v, bool draw_points)
         return;
     }
 
-    voronoit_kdtree(v);
+    voronoi_kdtree(v);
 
     if (draw_points)
     {
