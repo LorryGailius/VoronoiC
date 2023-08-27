@@ -68,31 +68,80 @@ bool arePointsSame(int point1[], int point2[])
     return true;
 }
 
-bool search_rec(node_t *root, int point[], unsigned depth)
+int comparePoints(int point1[], int point2[], unsigned cd)
+{
+    if (point1[cd] < point2[cd])
+        return -1;
+    if (point1[cd] > point2[cd])
+        return 1;
+    return 0;
+}
+
+node_t *findMin(node_t *root, unsigned cd, unsigned depth)
 {
     if (root == NULL)
+        return NULL;
+
+    if (cd == depth % k)
     {
-        return false;
+        if (root->left == NULL)
+            return root;
+        return findMin(root->left, cd, depth + 1);
     }
 
-    if (arePointsSame(root->point, point))
-    {
-        return true;
-    }
+    node_t *left = findMin(root->left, cd, depth + 1);
+    node_t *right = findMin(root->right, cd, depth + 1);
+
+    node_t *min_node = root;
+
+    if (left != NULL && comparePoints(left->point, min_node->point, cd) < 0)
+        min_node = left;
+
+    if (right != NULL && comparePoints(right->point, min_node->point, cd) < 0)
+        min_node = right;
+
+    return min_node;
+}
+
+node_t *delete_node(node_t *root, int point[], unsigned depth)
+{
+    if (root == NULL)
+        return root;
 
     unsigned cd = depth % k;
 
-    if (point[cd] < root->point[cd])
+    if (arePointsSame(root->point, point))
     {
-        return search_rec(root->left, point, depth + 1);
+        if (root->right != NULL)
+        {
+            node_t *min_node = findMin(root->right, cd, depth + 1);
+            memcpy(root->point, min_node->point, sizeof(int) * k);
+            root->color = min_node->color;
+            root->right = delete_node(root->right, min_node->point, depth + 1);
+        }
+        else if (root->left != NULL)
+        {
+            node_t *min_node = findMin(root->left, cd, depth + 1);
+            memcpy(root->point, min_node->point, sizeof(int) * k);
+            root->color = min_node->color;
+            root->right = delete_node(root->left, min_node->point, depth + 1);
+            root->left = NULL;
+        }
+        else
+        {
+            free(root);
+            return NULL;
+        }
+    }
+    else
+    {
+        if (point[cd] < root->point[cd])
+            root->left = delete_node(root->left, point, depth + 1);
+        else
+            root->right = delete_node(root->right, point, depth + 1);
     }
 
-    return search_rec(root->right, point, depth + 1);
-}
-
-bool search(node_t *root, int point[])
-{
-    return search_rec(root, point, 0);
+    return root;
 }
 
 node_t *nearest_neighbour_rec(node_t *root, int point[], unsigned depth, int *min_dist, node_t **min_node)
@@ -283,7 +332,33 @@ void voronoi_draw_all_points(voronoi_t *v)
 
 void voronoi_move_points(voronoi_t *v)
 {
-    // NOT IMPLEMENTED FOR PERFORMANCE REASONS
+    for (int i = 0; i < v->point_count; i++)
+    {
+        // Save old coordinates
+        int old_x = v->points[i].x;
+        int old_y = v->points[i].y;
+
+        // Update coordinates
+        v->points[i].x += v->points[i].velocity_x;
+        v->points[i].y += v->points[i].velocity_y;
+
+        // Check if point is out of bounds
+        if (v->points[i].x < 0 || v->points[i].x >= v->width)
+        {
+            v->points[i].velocity_x *= -1;
+            v->points[i].x += v->points[i].velocity_x;
+        }
+
+        if (v->points[i].y < 0 || v->points[i].y >= v->height)
+        {
+            v->points[i].velocity_y *= -1;
+            v->points[i].y += v->points[i].velocity_y;
+        }
+
+        // Update KDTree
+        v->root = delete_node(v->root, (int[]){old_x, old_y}, 0);
+        v->root = insert(v, v->root, (int[]){v->points[i].x, v->points[i].y}, v->points[i].color);
+    }
 }
 
 int sqr_dist(int x1, int y1, int x2, int y2)
@@ -332,7 +407,6 @@ void voronoi_draw(voronoi_t *v, bool draw_points)
         return;
     }
 
-    // voronoi_brute_force(v);
     voronoit_kdtree(v);
 
     if (draw_points)

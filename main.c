@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    bool should_quit = false, animate = false, points = true;
+    bool should_quit = false, points = true;
     SDL_Event e;
     while (!should_quit)
     {
@@ -130,11 +130,6 @@ int main(int argc, char *argv[])
             {
                 switch (e.key.keysym.sym)
                 {
-                    case SDLK_m:
-                    {
-                        animate = !animate;
-                        break;
-                    }
                     case SDLK_p:
                     {
                         points = !points;
@@ -153,12 +148,6 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-        }
-
-        if (animate)
-        {
-            voronoi_move_points(&properties);
-            display(texture, &properties, points);
         }
         // render on screen
         SDL_RenderClear(renderer);
