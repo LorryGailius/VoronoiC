@@ -3,7 +3,11 @@
 References:
     - Rendering pixel array by keeping it in RAM and then just copying it to a texture :
             https://discourse.libsdl.org/t/most-efficient-way-of-getting-render-pixels/27581/4
-
+    - KD-Tree and nearest neighbor search pseudocode:
+            https://en.wikipedia.org/wiki/K-d_tree
+    - KD-Tree implementation:
+            https://www.geeksforgeeks.org/k-dimensional-tree/
+    
 Color is represented in RGBA format, where each channel is 8 bits long.
     - 0xAABBGGRR
     - AA - alpha channel
@@ -17,7 +21,7 @@ Color is represented in RGBA format, where each channel is 8 bits long.
 
 #define WIDTH 800
 #define HEIGHT 600
-#define MAX_POINTS 100
+#define MAX_POINTS 10000
 #define POINT_RADIUS 4
 #define POINT_COLOR 0xFF000000
 
@@ -32,6 +36,7 @@ uint32_t color_palette[] = {
     0xFF7CBE01};
 int palette_size = sizeof(color_palette) / sizeof(uint32_t);
 
+// dump pixel data to an SDL_Texture
 void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitch)
 {
     void *texture_pixels = NULL;
@@ -48,14 +53,16 @@ void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitc
     SDL_UnlockTexture(texture);
 }
 
-void display(SDL_Texture *texture, voronoi_t *v)
+// draw voronoi diagram on screen
+void display(SDL_Texture *texture, voronoi_t *v, bool draw_points)
 {
-    voronoi_draw(v);
+    voronoi_draw(v, draw_points);
     v_texturize_pixels(texture, v->pixels, 0);
 }
 
 int main(int argc, char *argv[])
 {
+    srand(time(NULL));
     voronoi_t properties = voronoi_create(WIDTH, HEIGHT, MAX_POINTS, POINT_RADIUS, POINT_COLOR, color_palette, palette_size);
 
     // initialize SDL
@@ -101,7 +108,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    bool should_quit = false, animate = false;
+    bool should_quit = false, animate = false, points = true;
     SDL_Event e;
     while (!should_quit)
     {
@@ -117,20 +124,42 @@ int main(int argc, char *argv[])
                 {
                     voronoi_add_point(&properties, e.button.x, e.button.y);
                 }
-                display(texture, &properties);
+                display(texture, &properties, points);
             }
-            else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_m)
+            else if (e.type == SDL_KEYDOWN)
             {
-                animate = !animate;
+                switch (e.key.keysym.sym)
+                {
+                    case SDLK_m:
+                    {
+                        animate = !animate;
+                        break;
+                    }
+                    case SDLK_p:
+                    {
+                        points = !points;
+                        display(texture, &properties, points);
+                        break;
+                    }
+                    case SDLK_g:
+                    {
+                        voronoi_generate_random_points(&properties, 10);
+                        display(texture, &properties, points);
+                        break;
+                    }
+                    default:
+                    {
+                        break;
+                    }
+                }
             }
         }
 
         if (animate)
         {
             voronoi_move_points(&properties);
-            display(texture, &properties);
+            display(texture, &properties, points);
         }
-
         // render on screen
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
