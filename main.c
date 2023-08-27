@@ -3,7 +3,7 @@
 References:
     - Rendering pixel array by keeping it in RAM and then just copying it to a texture :
             https://discourse.libsdl.org/t/most-efficient-way-of-getting-render-pixels/27581/4
-    - KD-Tree and nearest neighbor search pseudocode:
+    - KD-Tree and nearest neighbour search pseudocode:
             https://en.wikipedia.org/wiki/K-d_tree
     - KD-Tree implementation:
             https://www.geeksforgeeks.org/k-dimensional-tree/
