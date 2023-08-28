@@ -37,10 +37,10 @@ uint32_t color_palette[] = {
 int palette_size = sizeof(color_palette) / sizeof(uint32_t);
 
 // Dump pixel data to an SDL_Texture
-void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitch)
+void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels)
 {
     void *texture_pixels = NULL;
-
+    int texture_pitch = 0;
     if (SDL_LockTexture(texture, NULL, &texture_pixels, &texture_pitch) != 0)
     {
         SDL_Log("Unable to lock texture: %s", SDL_GetError());
@@ -49,7 +49,6 @@ void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitc
     {
         memcpy(texture_pixels, pixels, texture_pitch * HEIGHT);
     }
-
     SDL_UnlockTexture(texture);
 }
 
@@ -57,7 +56,7 @@ void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitc
 void display(SDL_Texture *texture, voronoi_t *v, bool draw_points)
 {
     voronoi_draw(v, draw_points);
-    v_texturize_pixels(texture, v->pixels, 0);
+    v_texturize_pixels(texture, v->pixels);
 }
 
 int main(int argc, char *argv[])
@@ -119,6 +118,7 @@ int main(int argc, char *argv[])
     bool should_quit = false, points = true;
 
     voronoi_generate_random_points(&properties, generate_points);
+    fill_screen(&properties, 0xFFFFFFFF);
     display(texture, &properties, points);
 
     SDL_Event e;
