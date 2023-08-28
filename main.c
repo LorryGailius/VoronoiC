@@ -1,76 +1,166 @@
-#include "SDL.h"
-#include <voronoi.h>
-#include <assert.h>
-#include <time.h>
+// Laurynas Gailius 2023
+/*
+References:
+    - Rendering pixel array by keeping it in RAM and then just copying it to a texture :
+            https://discourse.libsdl.org/t/most-efficient-way-of-getting-render-pixels/27581/4
+    - KD-Tree and nearest neighbour search pseudocode:
+            https://en.wikipedia.org/wiki/K-d_tree
+    - KD-Tree implementation:
+            https://www.geeksforgeeks.org/k-dimensional-tree/
+    
+Color is represented in RGBA format, where each channel is 8 bits long.
+    - 0xAABBGGRR
+    - AA - alpha channel
+    - BB - blue channel
+    - GG - green channel
+    - RR - red channel
+*/
 
-const int screen_width = 800;
-const int screen_height = 600;
+#include <SDL2/SDL.h>
+#include "voronoi.h"
 
-int main(int argc, char *argv[]) {
+#define WIDTH 800
+#define HEIGHT 600
+#define MAX_POINTS 10000
+#define POINT_RADIUS 4
+#define POINT_COLOR 0xFF000000
+
+uint32_t color_palette[] = {
+    0xFFA7794E,
+    0xFF2B8EF2,
+    0xFF5957E1,
+    0xFFB2B776,
+    0xFF4FA159,
+    0xFF48C9ED,
+    0xFFA17AB0,
+    0xFF7CBE01};
+int palette_size = sizeof(color_palette) / sizeof(uint32_t);
+
+// Dump pixel data to an SDL_Texture
+void v_texturize_pixels(SDL_Texture *texture, uint32_t *pixels, int texture_pitch)
+{
+    void *texture_pixels = NULL;
+
+    if (SDL_LockTexture(texture, NULL, &texture_pixels, &texture_pitch) != 0)
+    {
+        SDL_Log("Unable to lock texture: %s", SDL_GetError());
+    }
+    else
+    {
+        memcpy(texture_pixels, pixels, texture_pitch * HEIGHT);
+    }
+
+    SDL_UnlockTexture(texture);
+}
+
+// Draw voronoi diagram on screen
+void display(SDL_Texture *texture, voronoi_t *v, bool draw_points)
+{
+    voronoi_draw(v, draw_points);
+    v_texturize_pixels(texture, v->pixels, 0);
+}
+
+int main(int argc, char *argv[])
+{
     srand(time(NULL));
+    voronoi_t properties = voronoi_create(WIDTH, HEIGHT, MAX_POINTS, POINT_RADIUS, POINT_COLOR, color_palette, palette_size);
 
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    SDL_Surface *surface;
-    SDL_Event event;
-
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
-        return 3;
+    // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    {
+        SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
+        return 1;
     }
 
-    if (SDL_CreateWindowAndRenderer(screen_width, screen_height, SDL_WINDOW_SHOWN, &window, &renderer)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window and renderer: %s", SDL_GetError());
-        return 3;
+    // Create window
+    SDL_Window *window = SDL_CreateWindow("VoronoiC",
+                                          SDL_WINDOWPOS_CENTERED,
+                                          SDL_WINDOWPOS_CENTERED,
+                                          WIDTH, HEIGHT,
+                                          SDL_WINDOW_SHOWN);
+    if (window == NULL)
+    {
+        SDL_Log("Unable to create window: %s", SDL_GetError());
+        return 1;
     }
 
-    int mouse_x, mouse_y, pointNum = 0;
-
-    pixel_t **pixels = (pixel_t**)malloc(screen_height * sizeof(pixel_t*));
-
-    for (size_t i = 0; i < screen_height; i++) {
-
-        pixels[i] = (pixel_t*)malloc(screen_width * sizeof(pixel_t));
+    // Create renderer
+    SDL_Renderer *renderer = SDL_CreateRenderer(
+        window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (renderer == NULL)
+    {
+        SDL_Log("Unable to create renderer: %s", SDL_GetError());
+        return 1;
     }
 
-    point_t *points = malloc(MAX_POINTS * sizeof(point_t));
+    SDL_RenderSetLogicalSize(renderer, WIDTH, HEIGHT);
 
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-    SDL_RenderPresent(renderer);
+    // Create texture
+    SDL_Texture *texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING,
+        WIDTH,
+        HEIGHT);
+    if (texture == NULL)
+    {
+        SDL_Log("Unable to create texture: %s", SDL_GetError());
+        return 1;
+    }
 
-    while (1) {
-
-        SDL_PollEvent(&event);
-
-        if (event.type == SDL_QUIT) {
-            break;
-        }
-        else if(event.type == SDL_MOUSEBUTTONDOWN) {
-            if(event.button.button == SDL_BUTTON_LEFT) { 
-
-                SDL_GetMouseState(&mouse_x, &mouse_y);
-                add_point(points, &pointNum, mouse_x, mouse_y); 
-                voronoi(points, pointNum, screen_width, screen_height, pixels);
-                
-                for (size_t i = 0; i < screen_height; i++) {
-                    for (size_t j = 0; j < screen_width; j++) {
-                        SDL_SetRenderDrawColor(renderer, pixels[i][j].r, pixels[i][j].g, pixels[i][j].b, 255);
-                        SDL_RenderDrawPoint(renderer, j, i);
+    bool should_quit = false, points = true;
+    SDL_Event e;
+    while (!should_quit)
+    {
+        while (SDL_PollEvent(&e) != 0)
+        {
+            if (e.type == SDL_QUIT)
+            {
+                should_quit = true;
+            }
+            else if (e.type == SDL_MOUSEBUTTONDOWN)
+            {
+                if (e.button.button == SDL_BUTTON_LEFT)
+                {
+                    voronoi_add_point(&properties, e.button.x, e.button.y);
+                }
+                display(texture, &properties, points);
+            }
+            else if (e.type == SDL_KEYDOWN)
+            {
+                switch (e.key.keysym.sym)
+                {
+                    case SDLK_p:
+                    {
+                        // Toggle point visibility
+                        points = !points;
+                        display(texture, &properties, points);
+                        break;
+                    }
+                    case SDLK_g:
+                    {
+                        // Generate random points
+                        voronoi_generate_random_points(&properties, 10);
+                        display(texture, &properties, points);
+                        break;
+                    }
+                    default:
+                    {
+                        break;
                     }
                 }
-                SDL_RenderPresent(renderer);
             }
         }
+        // Render on screen
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
     }
-
+    voronoi_destroy(&properties);
+    SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
-    for(size_t i = 0; i < screen_height; i++) { free(pixels[i]); }
-    
-    free(pixels);
-    free(points);
 
     return 0;
 }

@@ -1,34 +1,64 @@
-#ifndef VORONOI_H 
+#ifndef VORONOI_H
 #define VORONOI_h
 
-#include <stdlib.h>
 #include <stdio.h>
-#include <math.h>
-#include <assert.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
 #include <time.h>
 #include <limits.h>
-#define MAX_POINTS 15
 
-typedef struct pixel_t {
-    int r;
-    int g;
-    int b;
-}pixel_t;
+#define k 2
 
-typedef struct point_t {
+typedef struct Node
+{
+    int point[k];
+    struct Node *left, *right;
+    int velocity_x;
+    int velocity_y;
+    uint32_t color;
+} node_t;
+
+typedef struct
+{
     int x;
     int y;
-    pixel_t color;
-}point_t;
+    int velocity_x;
+    int velocity_y;
+    uint32_t color;
+} voronoi_point_t;
 
-int get_points(char *fileName, point_t points[MAX_POINTS], int *size);
+typedef struct
+{
+    int width;
+    int height;
+    int max_points;
+    int point_radius;
+    uint32_t point_color;
+    uint32_t *color_palette;
+    int palette_size;
+    uint32_t *pixels;
+    voronoi_point_t *points;
+    int point_count;
+    node_t *root;
+} voronoi_t;
 
-int add_point(point_t points[MAX_POINTS], int *size, int x, int y);
+voronoi_t voronoi_create(int width, int height, int max_points, int point_radius, uint32_t point_color, uint32_t *color_palette, int palette_size);
 
-void generate_points(point_t *points, int *size,int screen_width, int screen_height, int amount);
+void voronoi_destroy(voronoi_t *v);
 
-int voronoi(point_t *points, int size, int screen_width, int screen_height, pixel_t **pixels);
+void fill_screen(voronoi_t *v, uint32_t color);
 
-int pixel_to_ppm(pixel_t **pixels, int screen_width, int screen_height, FILE *os);
+void voronoi_add_point(voronoi_t *v, int x, int y);
 
+void voronoi_generate_random_points(voronoi_t *v, int count);
+
+void voronoi_brute_force(voronoi_t *v);
+
+void voronoi_move_points(voronoi_t *v);
+
+void voronoi_kdtree(voronoi_t *v);
+
+void voronoi_draw(voronoi_t *v, bool draw_points);
 #endif
