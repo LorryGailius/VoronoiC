@@ -118,7 +118,6 @@ int main(int argc, char *argv[])
     bool should_quit = false, points = true;
 
     voronoi_generate_random_points(&properties, generate_points);
-    fill_screen(&properties, 0xFFFFFFFF);
     display(texture, &properties, points);
 
     SDL_Event e;
