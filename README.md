@@ -9,5 +9,12 @@ There is a brute-force implementation and an optimized one which uses a [KD-Tree
 # How to use
 Run the .exe and place Voronoi points on screen to see a Voronoi diagram appear
 
+Specify the number of points to generate with a flag. For example, to generate 100 points run ```VoronoiC.exe 100```
+
+## Controls
+- Left click to place a point
+- G to generate 10 random points
+- P to toggle point visibility
+
 # How to compile
 In order to compile from source [GNU Make](https://www.gnu.org/software/make/) is required. Simply run the ```make``` comman inside of terminal

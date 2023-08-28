@@ -21,7 +21,7 @@ Color is represented in RGBA format, where each channel is 8 bits long.
 
 #define WIDTH 800
 #define HEIGHT 600
-#define MAX_POINTS 10000
+#define MAX_POINTS 1000
 #define POINT_RADIUS 4
 #define POINT_COLOR 0xFF000000
 
@@ -63,6 +63,14 @@ void display(SDL_Texture *texture, voronoi_t *v, bool draw_points)
 int main(int argc, char *argv[])
 {
     srand(time(NULL));
+
+    int generate_points = 0;
+
+    if (argc > 1 && argc < 3)
+    {
+        generate_points = atoi(argv[1]);
+    }
+
     voronoi_t properties = voronoi_create(WIDTH, HEIGHT, MAX_POINTS, POINT_RADIUS, POINT_COLOR, color_palette, palette_size);
 
     // Initialize SDL
@@ -109,6 +117,10 @@ int main(int argc, char *argv[])
     }
 
     bool should_quit = false, points = true;
+
+    voronoi_generate_random_points(&properties, generate_points);
+    display(texture, &properties, points);
+
     SDL_Event e;
     while (!should_quit)
     {
