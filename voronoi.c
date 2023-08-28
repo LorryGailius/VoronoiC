@@ -25,7 +25,8 @@ node_t *node_create(voronoi_t *v, int arr[], uint32_t color)
 // Free memory used by the KDTree
 void deleteTree(node_t *root)
 {
-    if (root == NULL) {
+    if (root == NULL)
+    {
         return;
     }
     deleteTree(root->left);
@@ -178,7 +179,6 @@ node_t *nearest_neighbour_rec(node_t *root, int point[], unsigned depth, int *mi
         other = root->left;
     }
 
-
     int dist_sq = 0;
     for (int i = 0; i < k; i++)
     {
@@ -280,26 +280,24 @@ void fill_screen(voronoi_t *v, uint32_t color)
 void draw_circle(voronoi_t *v, int cx, int cy, int radius, uint32_t color)
 {
     int x0 = cx - radius;
+    x0 = x0 <= 0 ? 0 : x0;
     int y0 = cy - radius;
+    y0 = y0 <= 0 ? 0 : y0;
     int x1 = cx + radius;
+    x1 = x1 >= v->width ? v->width : x1;
     int y1 = cy + radius;
+    y1 = y1 >= v->height ? v->height : y1;
 
     for (int x = x0; x < x1; x++)
     {
-        if (x >= 0 && x < v->width)
+        for (int y = y0; y < y1; y++)
         {
-            for (int y = y0; y < y1; y++)
-            {
-                if (y >= 0 && y < v->height)
-                {
-                    int dx = x - cx;
-                    int dy = y - cy;
+            int dx = x - cx;
+            int dy = y - cy;
 
-                    if ((dx * dx + dy * dy) <= (radius * radius))
-                    {
-                        v->pixels[y * v->width + x] = color;
-                    }
-                }
+            if ((dx * dx + dy * dy) <= (radius * radius))
+            {
+                v->pixels[y * v->width + x] = color;
             }
         }
     }
