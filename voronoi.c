@@ -311,7 +311,7 @@ void draw_circle(voronoi_t *v, int cx, int cy, int radius, uint32_t color)
 // Adds a point to the voronoi diagram, both to the points array and the KDTree
 void voronoi_add_point(voronoi_t *v, int x, int y)
 {
-    if (v->point_count > v->max_points)
+    if (v->point_count >= v->max_points)
     {
         return;
     }
