@@ -270,12 +270,9 @@ void voronoi_destroy(voronoi_t *v)
 // Fill screen with one color
 void fill_screen(voronoi_t *v, uint32_t color)
 {
-    for (int y = 0; y < v->height; y++)
+    for (int i = 0, c = v->height * v->width; i < c; ++i)
     {
-        for (int x = 0; x < v->width; x++)
-        {
-            v->pixels[y * v->width + x] = color;
-        }
+        v->pixels[i] = color;
     }
 }
 
